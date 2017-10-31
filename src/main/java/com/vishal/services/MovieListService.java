@@ -1,0 +1,58 @@
+package com.vishal.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+
+import com.vishal.error.Error;
+import com.vishal.error.UserMoviesException;
+import com.vishal.models.Constants;
+
+import io.reactivex.Observable;
+
+/**
+ * Service which handles querying list of movie ids corresponding to a user
+ */
+@Service
+public class MovieListService {
+
+	@Autowired
+	private RestTemplate restTemplate;
+
+	/**
+	 * method to return list of movie ids for given user id
+	 */
+	public Observable<Integer> userMovieIds(Integer userId) {
+		
+		if(userId == null){
+			return Observable.error(
+					new UserMoviesException("Invalid User Id " + userId, Error.BAD_INPUT));
+		}
+
+		Integer[] result = new Integer[] {};
+		try {
+			result = restTemplate.getForObject(Constants.MOVIE_LIST_URL + "/{userId}", Integer[].class, userId);
+			if (result == null) {
+				return Observable.error(
+						new UserMoviesException("Movie List not found for user id " + userId, Error.EXTERNAL_SERVICE));
+			}
+		} catch (HttpStatusCodeException e) {
+			return Observable.error(new UserMoviesException(
+					"Error fetching movie list : " + e.getResponseBodyAsString() + ". Please try refreshing ",
+					Error.BAD_USER, e.getStatusCode()));
+		} catch (RestClientException e) {
+			return Observable.error(new UserMoviesException(
+					"Unable to reach movie list service at " + Constants.MOVIE_LIST_URL + ". Please try refreshing ",
+					Error.UNREACHABLE_SERVICE, HttpStatus.REQUEST_TIMEOUT));
+		} catch (Exception e) {
+			return Observable.error(
+					new UserMoviesException("Application Error. Please try refreshing.", Error.INTERNAL_ERROR, e));
+		}
+
+		return Observable.fromArray(result);
+
+	}
+}
