@@ -44,7 +44,7 @@ public class UserMoviesService {
 	 */
 	public Observable<Movie> userMovies(Integer userId) {
 
-		return movieListSvc.userMovieIds(userId).retry(Constants.NUM_RETRIES).flatMap(m -> {
+		return movieListSvc.userMovieIds(userId).flatMap(m -> {
 
 			logger.debug("querying title and image for the movieid " + m);
 
